@@ -342,10 +342,7 @@
 								provinceArr.value = res[i].id;
 								province.push(provinceArr);
 							}
-							for(var x=0; x<that.addData.length; x++){
-									that.addData.provinces = province;
-								}
-							console.log(that.addData);	
+							that.province = province;
 
 						}
 					})
@@ -434,8 +431,9 @@
 						arr.citys=[];
 						arr.lat = 39.914891;
 						arr.lng = 116.404041;
+						arr.provinces = this.province;						
+
 						this.addData.push(arr)
-						console.log(this.addData);
 					},
 					removeshop:function(index){
 						if(this.addData.length>1){
