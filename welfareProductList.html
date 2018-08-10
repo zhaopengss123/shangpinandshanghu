@@ -1,0 +1,1236 @@
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+<!-- 		<script src="<%=request.getContextPath()%>/plugins/input-mask/inputmask.js" type="text/javascript"></script>
+		<script src="<%=request.getContextPath()%>/plugins/input-mask/jquery.inputmask.js" type="text/javascript"></script>
+		<script src="<%=request.getContextPath()%>/js/md5.js" type="text/javascript"></script> -->
+		<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+		<script src="https://cdn.bootcss.com/vue/2.4.2/vue.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.0"></script>
+		<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+		  <script src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js" type="text/javascript"></script>
+		 <script src="http://gosspublic.alicdn.com/aliyun-oss-sdk-4.4.4.min.js"></script>
+		  <script src="http://unpkg.com/wangeditor@3.1.1/release/wangEditor.min.js" type="text/javascript" charset="utf-8"></script>
+
+	</head>
+	<body>
+			
+		<div id="app">
+
+			<div class="search">
+				<div><b>商户名称</b>
+					<el-input v-model="forms.commercialName"  placeholder="请输入内容"></el-input>
+				</div>
+				<div><b>商品状态 </b>
+					<el-select v-model="status_ht" placeholder="请选择">
+						<el-option v-for="item in status" :key="item.value" :label="item.label" :value="item.value">
+						</el-option>
+					</el-select>
+				</div>
+				<div><b>商品名称 </b>
+						<el-input v-model="forms.productName" placeholder="请输入内容"></el-input>
+				</div>
+			
+				<div>
+					<el-button type="primary" icon="el-icon-search" @click="seach">搜索</el-button>
+				</div>
+			</div>
+			<div class="content">
+				<div class="content_list">
+					<div class="list_tit">
+						<div class="list_left"></div>
+						<div class="list_right">
+							<el-button type="primary" size="medium" @click="addproduct()" round>新增商品</el-button>
+						</div>
+					</div>
+					<div class="list_main">
+						<ul>
+
+							<li>商户名称</li>
+							<li>商品名称</li>
+							<li>商品价格</li>
+							<li>上架日期</li>
+							<li>下架日期</li>
+							<li>商品状态</li>
+							<li>换购人数</li>
+							<li>核销人数</li>
+							<li>操作</li>
+						</ul>
+						<ul v-for="item in formList" style="font-size: 14px;">
+
+							<li>{{item.commercialName}}</li>
+							<li>{{item.productName}}</li>
+							<li>{{item.productPrice}}</li>
+							<li>{{item.putawayDate.substr(0,10)}}</li>
+							<li>{{item.soldoutDate.substr(0,10)}}</li>
+							<li>{{item.productStatus==1?'上架':'下架'}}</li>
+							<li>{{item.exchangeCount}}</li>
+							<li @click="gridDatas(item.id)">
+								<el-popover
+								  placement="right"
+								  width="400"
+								  trigger="click">
+								  <el-table :data="gridData">
+								    <el-table-column width="150" property="mobilePhone" label="会员手机"></el-table-column>
+								    <el-table-column width="100" property="memberName" label="会员姓名"></el-table-column>
+								    <el-table-column width="300" property="verificationTime" label="核销时间"></el-table-column>
+								  </el-table>
+								  <el-button slot="reference" >{{item.verificationCount}}</el-button>
+								</el-popover>
+							</li>
+							<li><span @click="selectProduct(item.id)">修改商品</span><span v-if="item.productStatus==1" @click="soldout(item.id)">下架<span><span v-if="item.productStatus!=1" style="color: #ccc" >下架<span></li>
+						</ul>						
+					</div>
+				
+					<el-dialog :title="tctit" :visible.sync="dialogVisible" width="70%"  :before-close="handleClose">
+					    <el-row>
+						  <el-col :span="24"><div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商户名称</span>
+					<el-select v-model="addProduct.commercialCode" placeholder="请选择">
+					<el-option v-for="item in commercialList" :key="item.code" :label="item.commercialName" :value="item.code">
+					</el-option>
+					</el-select>
+								
+					</div>
+					</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商品类型</span>
+								<el-select v-model="addProduct.productType" placeholder="请选择">
+								<el-option v-for="item in productTypeList" :key="item.typeCode" :label="item.productType" :value="item.typeCode">
+								</el-option>
+								</el-select>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商品名称</span>
+								<el-input placeholder="请输入内容" v-model="addProduct.productName"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商品描述</span>
+								<el-input placeholder="请输入内容" v-model="addProduct.productDesc"></el-input>
+							</div>
+						</el-col>
+					</el-row>					
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商品价格</span>
+								<el-input placeholder="请输入内容" v-model="addProduct.productPrice" type="number"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" ><b>*</b>销卡次数</span>
+							<el-input placeholder="请输入内容" v-model="addProduct.cardCount" type="number"></el-input>
+					
+							</div>
+						</el-col>
+					</el-row>	
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>服务内容</span>
+								<el-input
+								style="width: 300px;"
+								  type="textarea"
+								  v-model="addProduct.serviceContent"
+								   :autosize="{ minRows: 2}"
+								  placeholder="请输入内容"
+								  v-model="formData.text">
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>规则/要求</span>
+								<el-input
+								style="width: 300px;"
+								  type="textarea"
+								  v-model="addProduct.ruleContent"
+								   :autosize="{ minRows: 2}"
+								  placeholder="请输入内容"
+								  v-model="formData.text">
+								  
+								  
+							</div>
+						</el-col>
+ 					</el-row>
+<!--						<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>可用时间</span>
+	   						 <el-date-picker
+						      v-model="addProduct.ruleContent"
+						      placeholder="请输入">								  
+							</div>
+						</el-col>
+					</el-row>	 -->
+					<el-row style="padding-top:10px">
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>使用年龄</span>
+								<el-input placeholder="例：4岁以上，3-6岁" v-model="addProduct.intro"></el-input>
+							</div>
+						</el-col>
+					</el-row>		
+						<el-row style="padding-top:10px">
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>可用时间</span>
+								<el-input placeholder="请输入内容" v-model="addProduct.usableTime"></el-input>
+							</div>
+						</el-col>
+					</el-row>	
+					
+
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>过期时间</span>
+								<el-date-picker
+							      type="daterange"
+							      v-model='usableTime1'
+							      value-format="yyyy-MM-dd"
+							      range-separator="至"
+							      start-placeholder="开始日期"
+							      end-placeholder="结束日期">
+							    </el-date-picker>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>有效期</span>
+							    <el-date-picker
+							      type="daterange"
+							      v-model="putawayorsoldoutDate"
+							      value-format="yyyy-MM-dd"
+							      range-separator="至"
+							      start-placeholder="开始日期"
+							      end-placeholder="结束日期">
+							    </el-date-picker>
+							</div>
+						</el-col>
+					</el-row>					
+
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>上传封面图</span>
+		
+					             <div class="uploadfiles"> 
+					        	<el-upload 
+							              class="upload-demo"
+							              action="https://jsonplaceholder.typicode.com/posts/"
+							              :on-preview="handlePictureCardPreview"
+							              :on-remove="imgRemove"
+							              :on-change="upLoadProimg"
+							              :multiple="false"
+							              :limit="1"
+							              :file-list="fileListimg"
+							              :auto-upload='false'
+							              >
+							              <el-button size="small" type="primary" >上传</el-button>
+							              <div slot="tip" class="el-upload__tip">仅支持上传JPG、PNG, 且不超过5M</div>
+							     </el-upload>      
+					             </div>
+					              
+					              
+							</div>
+						</el-col>
+					</el-row>
+					<el-row >
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>上传轮播图</span>
+		
+					             <div class="uploadfiles"> 
+					        	<el-upload 
+							              class="upload-demo"
+							              action="https://jsonplaceholder.typicode.com/posts/"
+							              :on-preview="handlePictureCardPreview"
+							              :on-remove="imgRemove1"
+							              :on-change="upLoadProimg1"
+							              :multiple="false"
+							              :limit="5"
+							              :file-list="fileListimg1"
+							              :auto-upload='false'
+							              >
+							              <el-button size="small" type="primary" >上传</el-button>
+							              <div slot="tip" class="el-upload__tip">仅支持上传JPG、PNG, 且不超过5M, 最多上传五张</div>
+							     </el-upload>      
+					             </div>
+					              
+					              
+							</div>
+						</el-col>
+					</el-row>
+
+
+					<el-row style="height: auto; min-height: 200px; ">
+						<div class="grid-content bg-purple-dark" style="position: relative; "><span class="input_tit" style="display: block; text-align: left; margin-bottom: 20px;" ><b>*</b>商品详情</span>
+						<!-- 编辑器 -->
+						<!-- <div class="uploads" >上传本地图片</div> -->
+							<el-upload 
+									class="upload-demo uploaddemo-ul"
+									action="https://jsonplaceholder.typicode.com/posts/"
+									:on-preview="handlePictureCardPreview"
+									:on-remove="imgRemove2"
+									:on-change="upLoadProimg2"
+									:multiple="false"
+									:limit="1000"
+									:file-list="fileListimg2"
+									:auto-upload='false'
+									>
+									<el-button size="small" type="primary" class="uploads" >上传本地图片</el-button>
+							
+									     </el-upload> 
+								    <div id="editor" style="width: 97%; padding-left: 3%;">
+							    			
+									</div>
+						</div>
+					</el-row>	
+ 
+					<span slot="footer" class="dialog-footer">
+					    <el-button @click="dialogVisible = false">取 消</el-button>
+					    <el-button type="primary" @click="suretabUpload">确 定</el-button>
+					  </span>
+					</el-dialog>
+
+				</div>
+			</div>
+			<div class="pagetab">
+				<el-pagination background  layout=" total,prev, pager, next" :total="total" :current-page.sync="currentPage4"  @current-change="pagetabclick">
+				</el-pagination>
+			</div>
+		</div>
+		<script type="text/javascript">
+
+			var urls = '<%=request.getContextPath()%>';
+			// var urls = 'http://192.168.1.124:8080';
+			var editor,E;
+			
+			var vm = new Vue({
+				el: '#app',
+				data: function() {
+					return {
+						currentPage4:1,
+						status:[{
+							value: null,
+							label: '全部'
+						},{
+							value: 1,
+							label: '上架'
+						},
+						{
+							 value:0,
+							 label:'下架'
+						}],
+						usableTime1:'',
+						putawayorsoldoutDate:'',
+						addProduct:{
+							commercialCode:'',
+							productType:'',
+							carouselPic:[],
+							verificationCount:''
+						},
+						open_tc:false,
+						total:1,
+						formList:[],
+						status_ht:null,
+						forms:[],
+						templat:"",
+						templon:'',
+						formData: [],
+						imgbanner:false,
+						mapshow:false,
+						dialogVisible: false,
+						showtc: true,
+						dialogImageUrl: '',
+						dialogVisibles:false,
+						fileListimg:[],
+						fileListimg1:[],		
+						fileListimg2:[],				
+						imgListarr:[],
+						imgListarr1:[],
+						imgListarr2:[],						
+						fileArr:[],
+						options: [],
+						productTypeList:[],
+						commercialList:[],
+						tctit: '编辑商品信息',
+						value: '',
+						 gridData: [],
+						select_date: '',
+						fileList: [],
+					}
+
+				},
+				mounted: function() {
+					this.getListData(1);
+				},
+				methods: {
+					getData: function() {
+	
+					},
+					showsetting: function() {
+
+					},
+					handleClose: function(done) {
+					
+					},
+					mapClose: function(done) {
+						done();
+					},					
+				suremap:function(){
+						this.formData.lat =this.templat;
+						this.formData.lng =this.templon;
+						this.mapshow = false;
+					},
+				    //图片上传
+			      handlePictureCardPreview:function(file) {
+			        this.dialogImageUrl = file.url;
+			        this.dialogVisible = true;
+			      },
+			      imgRemove:function(file,fileList){
+				     this.fileListimg = fileList;
+//				     this.imgListarr.map((item, index) => {
+//				        var fileNAme = item.substring(item.lastIndexOf('\/')+1);
+//				        if(fileNAme == file.name){
+//				           this.imgListarr.splice(index,1); 
+//				        }
+//				      })
+				
+					this.imgListarr = [];
+    				console.log(this.imgListarr);
+			      },
+    				
+    				//图片上传
+			      handlePictureCardPreview1:function(file) {
+			        this.dialogImageUrl = file.url;
+			        this.dialogVisible = true;
+			      },
+			      imgRemove1:function(file,fileList){
+				     this.fileListimg1 = fileList;
+//				     this.imgListarr.map((item, index) => {
+//				        var fileNAme = item.substring(item.lastIndexOf('\/')+1);
+//				        if(fileNAme == file.name){
+//				           this.imgListarr.splice(index,1); 
+//				        }
+//				      })
+					for(var i=0; i<this.imgListarr1.length; i++){
+						var fileNAme = this.imgListarr1[i].substring(this.imgListarr1[i].lastIndexOf('\/')+1);
+						if(fileNAme == file.name){
+				           this.imgListarr1.splice(i,1); 
+				        }
+						console.log(this.imgListarr1);
+					}
+
+    				},
+			      imgRemove2:function(file,fileList){
+
+
+    				},    				
+    				    //上传图片
+				    upLoadProimg:function(file,fileList){
+				      var isLt2M = file.size / 1024 / 1024 < 5;
+				      this.files = file.raw;
+				      this.fileName = file.name.substring(file.name.lastIndexOf('.')+1);
+				      if(this.fileName =='jpg' || this.fileName == 'png' || this.fileName == 'gif'){
+				        if(isLt2M){
+				        this.flag = true;
+				        this.fileListimg = fileList;
+				        this.upLoadKey(file.uid, file.name,'img');
+				        }else{
+				        this.flag = false;
+				        this.fileListimg =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`文件大小超限`);
+				        }
+				      }else{
+				        this.flag = false;
+				        this.fileListimg =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`当前文件格式不正确`);	
+				      }
+				      console.log(this.fileListimg)
+				    },
+    				    //上传图片1
+				    upLoadProimg1:function(file,fileList){
+				      var isLt2M = file.size / 1024 / 1024 < 5;
+				      this.files = file.raw;
+				      this.fileName = file.name.substring(file.name.lastIndexOf('.')+1);
+				      if(this.fileName =='jpg' || this.fileName == 'png' || this.fileName == 'gif'){
+				        if(isLt2M){
+				        this.flag = true;
+				        this.fileListimg1 = fileList;
+				        this.upLoadKey(file.uid, file.name,'img1');
+				        }else{
+				        this.flag = false;
+				        this.fileListimg1=  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`文件大小超限`);
+				        }
+				      }else{
+				        this.flag = false;
+				        this.fileListimg1 =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`当前文件格式不正确`);	
+				      }
+				      console.log(this.fileListimg1)
+				    },				    
+    				    //上传图片1
+				    upLoadProimg2:function(file,fileList){
+				      var isLt2M = file.size / 1024 / 1024 < 5;
+				      this.files = file.raw;
+				      this.fileName = file.name.substring(file.name.lastIndexOf('.')+1);
+				      if(this.fileName =='jpg' || this.fileName == 'png' || this.fileName == 'gif'){
+				        if(isLt2M){
+				        this.flag = true;
+				        this.fileListimg2 = fileList;
+				        this.upLoadKey(file.uid, file.name,'img2');
+				        }else{
+				        this.flag = false;
+				        this.fileListimg2=  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`文件大小超限`);
+				        }
+				      }else{
+				        this.flag = false;
+				        this.fileListimg2 =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`当前文件格式不正确`);	
+				      }
+				      console.log(this.fileListimg2)
+				    },					    
+				    
+					    //获取阿里云key				
+					upLoadKey:function(fileId, fileName,type){
+					   var that = this; 	
+				      var bucket = 'ylbb-business';
+				      var region = 'oss-cn-beijing';   //申请oss服务时的区域
+						$.ajax({
+							type:'post',
+							url:'http://oss.beibeiyue.com/oss/getOSSToken',
+							data:{
+								type:1
+							},success:function(res){
+								var res = JSON.parse(res);
+								if(res.result==0){
+						          var creds = res.data; 
+						            that.client = new OSS.Wrapper({
+						              region: region,
+						              accessKeyId: creds.accessKeyId,
+						              accessKeySecret: creds.accessKeySecret,
+						              stsToken: creds.securityToken,
+						              bucket: bucket
+						            });
+						        }else{
+						         
+						        }
+						        that.upLoadFile(fileId, fileName,type);
+							},error:function(xhr){
+								 that.prompt('网络连接失败,请稍后再试','warning');
+							}
+						})
+				    },	
+				   upLoadFile:function(fileId, fileListName,type){ 
+				      var that = this;
+				      var key = new Date().getTime() + this.files.name;
+				        that.client.multipartUpload(key, that.files, {}).then(res => {
+				          that.fileUrl = res.url ? res.url : 'http://'+ res.bucket + '.oss-cn-beijing.aliyuncs.com/' + res.name;
+				          that.fileArr.push(that.fileUrl)
+				          if(type=='img'){
+				           that.imgListarr.push(this.fileUrl);
+				           console.log(that.imgListarr);
+				          }else if(type=="img1"){
+				          	that.imgListarr1.push(this.fileUrl);
+				          	console.log(that.imgListarr1);
+				          }else{
+							that.imgListarr2.push(this.fileUrl);
+				          	console.log(that.imgListarr2);	
+				          	var ehtml = editor.txt.html() +'<p><img src="'+this.fileUrl+'"></p>' ;
+				          	editor.txt.html(ehtml);         	
+				          }
+				           
+				        }, error => {
+				          that.prompt('上传文件失败','warning');
+				        })
+				    },
+				    getListData:function(pageNo){
+				    	var that = this;	
+				    	if(this.status_ht==null||this.status_ht==""&&this.status_ht!=0){
+							var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							productName:this.forms.productName,
+							pageSize:10,
+							pageNo:pageNo,
+							})		
+				    	}else{
+
+				    		var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							productName:this.forms.productName,
+							pageSize:10,
+							pageNo:pageNo,
+							productStatus:this.status_ht
+							})	
+				    	}
+						//获取列表
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/productList.html',
+							data:{
+								paramJson:paramJson
+							},
+							success:function(res){
+								that.formList = res.list;
+								that.total = res.total;
+								if(!res.total){
+									that.total = 0;
+								}
+								that.formList =res.commercialProductList;
+								
+							},		error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+						});
+						//获取商户名字，商户类型
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/showCommercialName.html',
+							data:{
+								
+							},
+							success:function(res){
+								that.commercialList = res.commercialList;
+								that.productTypeList = res.productTypeList;
+							},
+									error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+														
+						});						
+					},
+					seach:function(){
+						var that = this;
+						this.getListData(1);
+									setTimeout(function(){
+									that.currentPage4 = 1;	
+									},500)
+						console.log(that.currentPage4);
+					},
+					pagetabclick:function(val){
+						this.getListData(val);
+					},
+					//新增商品
+					suretabUpload:function(){
+						var that =this;
+
+						if(that.form_verify(that.addProduct.commercialCode)==0){
+							that.$message({ message: '商户名称不能为空',type: 'error'});
+							return false;
+						}
+
+						if(that.form_verify(that.addProduct.productType)==0){
+							that.$message({ message: '商品类型不能为空',type: 'error'});
+							return false;
+						}
+
+						if(that.form_verify(that.addProduct.productName)==0){
+							that.$message({ message: '商品名称不能为空',type: 'error'});
+							return false;
+						}
+
+						if(that.form_verify(that.addProduct.productPrice)==0){
+							that.$message({ message: '商品价格不能为空',type: 'error'});
+							return false;
+						}		
+						if(that.form_verify(that.addProduct.productDesc)==0){
+							that.$message({ message: '商品描述不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addProduct.cardCount)==0){
+							that.$message({ message: '销卡次数不能为空',type: 'error'});
+							return false;
+						}
+
+						if(that.form_verify(that.addProduct.serviceContent)==0){
+							that.$message({ message: '服务内容不能为空',type: 'error'});
+							return false;
+						}		
+
+						if(that.form_verify(that.addProduct.ruleContent)==0){
+							that.$message({ message: '规则/要求不能为空',type: 'error'});
+							return false;
+						}
+
+						if(that.form_verify(that.usableTime1)==0){
+							that.$message({ message: '有效时间不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.putawayorsoldoutDate)==0){
+							that.$message({ message: '有效期不能为空',type: 'error'});
+							return false;
+						}						
+						if(that.form_verify(that.addProduct.intro)==0){
+							that.$message({ message: '使用年龄不能为空',type: 'error'});
+							return false;
+						}
+						if(that.imgListarr.length==0){
+							that.$message({ message: '封面图不能为空',type: 'error'});
+							return false;
+						}
+						if(that.imgListarr1.length==0){
+							that.$message({ message: '轮播图不能为空',type: 'error'});
+							return false;
+						}
+						var Ehtml = editor.txt.html();
+						if( !Ehtml){
+							that.$message({ message: '商品详情不能为空',type: 'error'});
+							return false;
+						}																																									
+
+						this.dialogVisible = true;
+						that.addProduct.putawayDate = that.putawayorsoldoutDate[0];
+						that.addProduct.soldoutDate = that.putawayorsoldoutDate[1];
+						that.addProduct.startTime =   that.usableTime1[0];
+						that.addProduct.endTime =   that.usableTime1[1];
+						that.addProduct.coverPic = that.imgListarr[0];
+                        that.addProduct.carouselPic = "";
+                        that.addProduct.brandDesc  = editor.txt.html();   
+						for(var i=0; i<that.imgListarr1.length; i++){
+							if(i==0){
+								that.addProduct.carouselPic = that.addProduct.carouselPic+that.imgListarr1[i];		
+							}else{
+								that.addProduct.carouselPic = that.addProduct.carouselPic+','+that.imgListarr1[i];	
+							}
+						
+		
+						}
+
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/addProduct.html',
+							data:{
+								paramJson:JSON.stringify(that.addProduct)
+							},success:function(res){
+								if(res.code==1){
+									that.$message({
+							          message: '操作成功！',
+							          type: 'success'
+							        });
+									that.dialogVisible = false;
+									that.getListData(1);
+									setTimeout(function(){
+									that.currentPage4 = 1;	
+									},500)
+									
+									
+								}
+							},
+							error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+						})
+					},
+					form_verify:function(text){
+						if(text==""||!text){
+							return  0;
+						}else{
+							return 1;
+						}
+
+					},
+
+					//商品回显
+					selectProduct:function(id){
+						var that = this;
+						this.dialogVisible = true;
+						this.tctit = '编辑商品信息';
+						if(!this.open_tc){	
+							setTimeout(function(){
+								 E = window.wangEditor
+						         editor = new E('#editor');
+								   editor.customConfig.colors = [
+										'#ffffff',
+										'#000000',
+										'#eeece1',
+										'#1f497d',
+										'#4f81bd',
+										'#c0504d',
+										'#9bbb59',
+										'#8064a2',
+										'#4bacc6',
+										'#f79646',
+										'#f2f2f2',
+										'#7f7f7f',
+										'#ddd9c3',
+										'#c6d9f0',
+										'#dbe5f1',
+										'#f2dcdb',
+										'#ebf1dd',
+										'#e5e0ec',
+										'#dbeef3',
+										'#fdeada',
+										'#d8d8d8',
+										'#595959',
+										'#c4bd97',
+										'#8db3e2',
+										'#b8cce4',
+										'#e5b9b7',
+										'#d7e3bc',
+										'#ccc1d9',
+										'#b7dde8',
+										'#fbd5b5',
+										'#bfbfbf',
+										'#3f3f3f',
+										'#938953',
+										'#548dd4',
+										'#95b3d7',
+										'#d99694',
+										'#c3d69b',
+										'#b2a2c7',
+										'#92cddc',
+										'#fac08f',
+										'#a5a5a5',
+										'#262626',
+										'#494429',
+										'#17365d',
+										'#366092',
+										'#953734',
+										'#76923c',
+										'#5f497a',
+										'#31859b',
+										'#e36c09',
+										'#7f7f7f',
+										'#0c0c0c',
+										'#1d1b10',
+										'#0f243e',
+										'#244061',
+										'#632423',
+										'#4f6128',
+										'#3f3151',
+										'#205867',
+										'#974806',
+										'#c00000',
+										'#ff0000',
+										'#ffc000',
+										'#ffff00',
+										'#92d050',
+										'#00b050',
+										'#00b0f0',
+										'#0070c0',
+										'#002060',
+										'#7030a0',
+										    ];			 
+						        editor.create();
+								that.open_tc = true;		
+								setTimeout(function(){
+									that.selectProduct1(id);
+								},500);	
+							},500);	
+						}else{
+							that.selectProduct1(id);
+						}
+						
+				
+					},
+					selectProduct1:function(id){
+						var that = this;
+						editor.txt.html(''); 
+						
+						
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/showProduct.html',
+							data:{
+								paramJson:JSON.stringify({
+									id:id
+								})
+							},success:function(res){
+								that.addProduct = res.commercialProduct;
+								that.putawayorsoldoutDate = [];
+								that.putawayorsoldoutDate.push(that.addProduct.putawayDate);
+								that.putawayorsoldoutDate.push(that.addProduct.soldoutDate);
+								usableTime1 =[];
+								usableTime1.push(that.addProduct.startTime);
+								usableTime1.push(that.addProduct.endTime);
+						
+								that.fileListfile = [];
+								var contractUrl = that.addProduct.coverPic;
+					            var contractUrl1 = that.addProduct.carouselPic.split(',');
+					           	editor.txt.html(res.commercialProduct.brandDesc);	  
+								var contractName = contractUrl.substring(contractUrl.lastIndexOf('\/')+1);
+								that.fileListimg = [];
+								that.fileListimg1 = [];
+								that.fileListimg.push({'name':contractName,'url':contractUrl});
+								that.imgListarr = [];
+								that.imgListarr1 = [];
+								that.imgListarr.push(contractUrl);
+								for(var i=0; i<contractUrl1.length; i++){
+
+									var contractName1 = contractUrl1[i].substring(contractUrl1[i].lastIndexOf('\/')+1);
+									that.fileListimg1.push({'name':contractName1,'url':contractUrl1[i]});
+									that.imgListarr1.push(contractUrl1[i]);
+								}
+								
+								
+							},
+									error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+						})
+						
+					},
+					//商品下架
+					soldout:function(id){
+						var that = this;
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/soldout.html',
+							data:{
+								paramJson:JSON.stringify({
+									id:id
+								})
+							},success:function(res){
+								if(res.code==1){
+									 that.$message({
+							          message: '下架成功！',
+							          type: 'success'
+							        });
+							        that.getListData(1);
+									setTimeout(function(){
+									that.currentPage4 = 1;	
+									},500)
+								}
+							},
+							error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+						})
+					},
+					//gridData
+					gridDatas:function(id){
+						var that = this;
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/showVerificationDetail.html',
+							data:{
+								paramJson:JSON.stringify({
+									productId:id
+								})
+							},success:function(data){
+								that.gridData = data.verificationDetailList;
+								for(var i=0; i<that.gridData.length; i++){
+		
+									that.gridData[i].verificationTime = that.gridData[i].verificationTime.replace('T',' ');
+								}
+							},error:function(){
+									that.$message({
+							          message: '网络错误！',
+							          type: 'error'
+							        });
+							}
+														
+						})
+					},
+					addproduct:function(){
+						var that = this;
+						this.dialogVisible = true;
+						if(!this.open_tc){	
+							setTimeout(function(){
+								 E = window.wangEditor
+						         editor = new E('#editor');
+								   editor.customConfig.colors = [
+										'#ffffff',
+										'#000000',
+										'#eeece1',
+										'#1f497d',
+										'#4f81bd',
+										'#c0504d',
+										'#9bbb59',
+										'#8064a2',
+										'#4bacc6',
+										'#f79646',
+										'#f2f2f2',
+										'#7f7f7f',
+										'#ddd9c3',
+										'#c6d9f0',
+										'#dbe5f1',
+										'#f2dcdb',
+										'#ebf1dd',
+										'#e5e0ec',
+										'#dbeef3',
+										'#fdeada',
+										'#d8d8d8',
+										'#595959',
+										'#c4bd97',
+										'#8db3e2',
+										'#b8cce4',
+										'#e5b9b7',
+										'#d7e3bc',
+										'#ccc1d9',
+										'#b7dde8',
+										'#fbd5b5',
+										'#bfbfbf',
+										'#3f3f3f',
+										'#938953',
+										'#548dd4',
+										'#95b3d7',
+										'#d99694',
+										'#c3d69b',
+										'#b2a2c7',
+										'#92cddc',
+										'#fac08f',
+										'#a5a5a5',
+										'#262626',
+										'#494429',
+										'#17365d',
+										'#366092',
+										'#953734',
+										'#76923c',
+										'#5f497a',
+										'#31859b',
+										'#e36c09',
+										'#7f7f7f',
+										'#0c0c0c',
+										'#1d1b10',
+										'#0f243e',
+										'#244061',
+										'#632423',
+										'#4f6128',
+										'#3f3151',
+										'#205867',
+										'#974806',
+										'#c00000',
+										'#ff0000',
+										'#ffc000',
+										'#ffff00',
+										'#92d050',
+										'#00b050',
+										'#00b0f0',
+										'#0070c0',
+										'#002060',
+										'#7030a0',
+										    ];
+
+						        editor.create();
+								this.open_tc = true;		
+								},1000)	
+						}						
+						this.usableTime1 = '';
+						this.putawayorsoldoutDate = '';
+						this.addProduct={
+							commercialCode:'',
+							productType:'',
+							usableTime1:'',
+							
+							carouselPic:[],
+						}
+						that.tctit = '新增商品信息';
+
+						that.fileListimg = [];
+						that.fileListimg1 = [];
+						that.imgListarr = [];
+						that.imgListarr1 = [];
+						editor.txt.html(''); 
+					}
+					
+				    
+				}
+			})
+		</script>
+	</body>
+	<style type="text/css">
+		* {
+			padding: 0;
+			margin: 0;
+			list-style: none;
+			word-break:break-all;word-wrap:break-word
+		}
+		.el-upload-list__item-name.el-upload-list__item-name{
+			height: 25px;
+		}		
+		#app {
+			width: 97%;
+			margin: 0 auto;
+		}
+				.uploadfiles {
+			width: 300px;
+			float: left;
+		}
+		.el-select,
+		.el-input {
+			width: auto;
+		}
+		
+		.search div {
+			padding: 0;
+			margin: 0;
+		}
+		
+		.search>div {
+			float: left;
+			width: auto;
+			margin-left: 20px;
+			padding: 10px 0;
+		}
+		
+		.search>div:first-child {
+			margin: 0;
+		}
+		
+		.search b {
+			float: left;
+			margin-right: 5px;
+			font-weight: normal;
+			display: block;
+			height: 40px;
+			line-height: 40px;
+		}
+		
+		.search {
+			border-bottom: solid 1px #f0f0f0;
+			overflow: hidden;
+			padding-bottom: 10px;
+		}
+		
+		.content {
+			width: 100%;
+			margin-top: 20px;
+		}
+		
+		.content_tit {
+			width: 100%;
+			height: 40px;
+			line-height: 40px;
+		}
+		
+		.list_left {
+			float: left;
+		}
+		
+		.list_right {
+			float: right;
+		}
+		
+		.list_tit {
+			width: 100%;
+			overflow: hidden;
+		}
+		
+		.list_main {
+			display: block;
+			margin: 0 auto;
+			width: 100%;
+			margin-top: 20px;
+			border-top: solid 1px #f0f0f0;
+			border-bottom: solid 1px #f0f0f0;
+		}
+		
+		.list_main ul {
+			display: block;
+			margin: 0 auto;
+			width: 100%;
+			overflow: hidden;
+			border-bottom: solid 1px #f0f0f0;
+		}
+		
+		.list_main ul:last-child {
+			border: none;
+		}
+		
+		.list_main ul li {
+			width: 10.3%;
+			float: left;
+			padding: 0 0.5%;
+			text-align: center;
+	
+			text-align: center;
+			
+			padding: 10px 0;
+		}
+		.list_main ul li:nth-child(1),.list_main ul li:nth-child(2){
+			width: 14.3%;
+		}
+		.list_main ul li:nth-child(3),.list_main ul li:nth-child(6),.list_main ul li:nth-child(7),.list_main ul li:nth-child(8){
+			width: 8.3%;
+		}		
+		
+		.list_main ul li:last-child {
+			border: none;
+			width: 12%;
+		}
+		
+		.list_main ul:first-child {
+			background: #e4e7ed;
+		}
+		
+		.list_main ul li span {
+			padding: 0 5px;
+			font-size: 14px;
+			color: #007AFF;
+			cursor: pointer;
+		}
+		
+		.pagetab {
+			width: auto;
+			float: right;
+			margin-top: 20px;
+		}
+		
+		.input_tit {
+			width: 100px;
+			text-align: right;
+			display: inline-block;
+			padding-right: 10px;
+		}
+		
+		.el-row {
+			padding: 5px 0;
+		}
+		
+		.input_tit b {
+			color: red;
+		}
+		
+		.el-dialog {
+			margin-top: 0;
+		}
+		
+		.el-dialog__body {
+			padding: 0 20px;
+		}
+		
+		.uploadfiles {
+			width: 300px;
+			float: left;
+		}
+
+		.mapmain{ width: 100%; height: 100%; position: relative;}
+		#allmap{ width: 600px; height: 500px;  }
+		.mapbg{ width: 100%; height: 100%; background: #000; opacity: 0.6;}
+		.map_active{ width: 600px; height: 600px; position: absolute; top: 50%; left: 50%; margin-top: -300px; margin-left: -300px; background: #CACACA; border-radius: 10px;}
+		.maptop{ height: 100px;}
+		.maptop .el-input{ padding: 30px 10px;}
+		.addimg{ float: left;}
+		.el-upload--picture-card.el-upload--picture-card{ width: 100px; height: 100px; line-height: 100px;}
+		.el-upload-list--picture-card .el-upload-list__item{ width: 100px; height: 100px;}
+		.ql-editor.ql-editor{ height: auto; min-height: 200px; }
+		.uploads{ width: 100px; height: 26px; line-height: 26px; text-align: center; border: solid 1px #ccc; position: absolute; right: 0px; top: 39px; cursor: pointer; padding: 0; background: none; outline: none; color: #666; border-radius: none;}
+		.uploaddemo-ul ul{ display: none; }
+	</style>
+
+</html>

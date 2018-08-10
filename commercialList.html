@@ -1,0 +1,933 @@
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+	<script src="<%=request.getContextPath()%>/plugins/input-mask/inputmask.js" type="text/javascript"></script>
+		<script src="<%=request.getContextPath()%>/plugins/input-mask/jquery.inputmask.js" type="text/javascript"></script>
+		<script src="<%=request.getContextPath()%>/js/md5.js" type="text/javascript"></script>
+		<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+		<script src="https://cdn.bootcss.com/vue/2.4.2/vue.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.0"></script>
+		<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=7NCxWo3ADYmuEiFY8GM4SW9yxoNGSnLG"></script>
+		<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+		<script src="http://gosspublic.alicdn.com/aliyun-oss-sdk-4.4.4.min.js"></script>
+
+	</head>
+
+	<body>
+		<div id="app">
+			<div class="search">
+				<div><b>商户名称</b>
+					<el-input v-model="forms.commercialName"   placeholder="请输入内容"></el-input>
+				</div>
+				<div><b>合同状态 </b>
+					<el-select v-model="status_ht" placeholder="请选择">
+						<el-option v-for="item in status" :key="item.value" :label="item.label" :value="item.value">
+						</el-option>
+					</el-select>
+				</div>
+				<div><b>签约日期 </b>
+					<el-date-picker v-model="forms.contractTime" value-format="yyyy-MM-dd" type="date" placeholder="选择日期">
+					</el-date-picker>
+				</div>
+				<div><b>bd人 </b>
+					<el-input v-model="forms.dbLinkman"   placeholder="请输入内容"></el-input>			
+				</div>
+				<div>
+					<el-button type="primary" icon="el-icon-search" @click="seach">搜索</el-button>
+				</div>
+			</div>
+			<div class="content">
+				<div class="content_list">
+					<div class="list_tit">
+						<div class="list_left"></div>
+						<div class="list_right">
+							<el-button type="primary" size="medium" @click="addshangh" round>新增商户</el-button>
+						</div>
+					</div>
+					<div class="list_main">
+						<ul>
+							<li>合同编号</li>
+							<li>合同状态</li>
+							<li>商户名称</li>
+							<li>商品个数</li>
+							<li>分店个数</li>
+							<li>联系人</li>
+							<li>联系方式</li>
+							<li>BD负责人</li>
+							<li>签约日期</li>
+							<li>操作</li>
+						</ul>
+						<ul v-for="item in formList" style="font-size: 14px;">
+							<li>{{item.contractNum}}</li>
+							<li>{{item.contractStatus==1?'有效':'无效'}}</li>
+							<li>{{item.commercialName}}</li>
+							<li>{{item.productCount}}</li>
+							<li>{{item.subbranchCount}}</li>
+							<li>{{item.linkman}}</li>
+							<li>{{item.linkmanPhone}}</li>
+							<li>{{item.dbLinkman}}</li>
+						<!-- 	<li>{{item.contractTime.substr(0,10)}}</li> -->
+						<li>{{item.contractTime}}</li>
+							<li><span @click="showMain(item.id)" >编辑</span>
+								<span v-if="item.contractUrl"><a :href="item.contractUrl" target="_blank">下载合同</a></span>
+								<span v-if="!item.contractUrl" style="color: #999;">下载合同</span>
+							</li>
+						</ul>						
+					</div>
+				
+					<el-dialog :title="tctit" :visible.sync="dialogVisible" width="70%"  :before-close="handleClose">
+					    <el-row>
+						  <el-col :span="24"><div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>商户名称</span>
+								<el-input style="width: 250px;" v-model="addAll.commercialName" placeholder="请输入内容"></el-input>
+								
+					</div>
+					</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>联系人</span>
+								<el-input placeholder="请输入内容" v-model="addAll.linkman"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>联系方式</span>
+								<el-input placeholder="请输入内容" v-model="addAll.linkmanPhone"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>BD负责人</span>
+								<el-input placeholder="请输入内容" v-model="addAll.dbLinkman"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>合同编号</span>
+								<el-input placeholder="请输入内容" v-model="addAll.contractNum"></el-input>
+							</div>
+						</el-col>
+					</el-row>					
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit" style="float: left;"><b>*</b>上传合同</span>
+								<div class="uploadfiles">
+							          
+							            <el-upload 
+							              class="upload-demo"
+							              action="https://jsonplaceholder.typicode.com/posts/"
+							              :on-preview="handlePreview"
+							              :on-remove="fileRemove"
+							              :on-change="upLoadProfile"
+							              :multiple="false"
+							              :limit="1"
+							              :file-list="fileListfile"
+							              :auto-upload='false'
+							              :on-exceed="handleExceed">
+							              <el-button size="small" type="primary" >上传</el-button>
+							              <div slot="tip" class="el-upload__tip">仅支持上传JPG、PNG、PDF、Word、Excel、PPT、RAR文件，且不超过20M, 最多可上传1个文件</div>
+							            </el-upload>
+							         
+								</div>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>签约日期</span>
+								<el-date-picker type="date" value-format="yyyy-MM-dd" v-model="addAll.contractTime"  placeholder="选择日期">
+								</el-date-picker>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>截止日期</span>
+								<el-date-picker type="date" value-format="yyyy-MM-dd" v-model="addAll.contractExpireTime" placeholder="选择日期">
+								</el-date-picker>
+							</div>
+						</el-col>
+					</el-row>
+					
+					
+					<div class="shopList" v-for="(item,index) in addData" :key="index">
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span  class="input_tit"><b>*</b>门店名称</span>
+								<el-input v-model="item.subbranchName" placeholder="请输入内容"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>门店所在地</span>
+								<el-input style="width:100px; padding-right: 5px;"  v-model="item.province" placeholder="请输入内容"></el-input>省/市
+								<el-input style="width:100px; padding-right: 5px;"  v-model="item.city" placeholder="请输入内容"></el-input>市
+								<el-input style="width:100px; padding-right: 5px;"  v-model="item.area" placeholder="请输入内容"></el-input>区/县
+								
+								 <el-select v-model="item.province" placeholder="请选择 " @change="provinceSelect(index)"	>
+								    <el-option
+								      v-for="items in (item.provinces)"
+								      :key="items.value"
+								      :label="items.label"
+								      :value="items.value"
+								     >
+								    </el-option>
+								  </el-select>
+								  <el-select v-model="item.city" placeholder="请选择">
+								    <el-option
+								      v-for="items in (item.citys)"
+								      :key="items.value"
+								      :label="items.label"
+								      :value="items.value">
+								    </el-option>
+								  </el-select>
+									
+
+							</div>
+						</el-col>
+					</el-row>					
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span  class="input_tit"><b>*</b>门店地址</span>
+								<el-input v-model="item.subbranchAdd" placeholder="请输入内容"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>地图标注</span>
+								<el-button size="small" round @click="setMap(index)">设置标注</el-button>
+								<el-input size="mini" v-model="item.lat" placeholder="请设置" :disabled="true" style="width: 100px;"></el-input>
+								<el-input size="mini" v-model="item.lng" placeholder="请设置" :disabled="true" style="width: 100px;"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>接收人</span>
+								<el-input v-model="item.receiver" placeholder="请输入内容"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>接收手机号</span>
+								<el-input v-model="item.receiverPhone" placeholder="请输入内容"></el-input>
+							</div>
+						</el-col>
+					</el-row>
+					<el-row>
+						<el-col :span="24">
+							<div class="grid-content bg-purple-dark"><span class="input_tit"><b>*</b>接收人邮箱</span>
+								<el-input v-model="item.receiverEmail" placeholder="请输入内容"></el-input>
+							</div>
+						</el-col>
+					</el-row>				
+					<el-button type="danger" size="small" style="margin-left: 20px; margin-bottom: 20px;" round @click="removeshop(index)">删除门店</el-button>
+					</div>
+					
+					
+					<el-button  round  style="margin-left: 20px;" @click="addshop">添加门店</el-button>
+					<span slot="footer" class="dialog-footer">
+					    <el-button @click="dialogVisible = false">取 消</el-button>
+					    <el-button type="primary" @click="addAllform">确 定</el-button>
+					  </span>
+					</el-dialog>
+				
+					<!--地图组件-->
+					<div class="mapContent" v-show="mapshow">
+						<div class="mapmain"  >
+							<div class="mapbg"></div>
+							<div class="map_active">
+								<div class="maptop">
+									<el-input size="medium" v-model="templat" :disabled="true" style="width: 150px;"></el-input>
+									<el-input size="medium" v-model="templng" :disabled="true" style="width: 150px;"></el-input>
+									<el-button type="info" plain size="medium" @click="mapshow=false">取消</el-button>
+									<el-button type="primary" size="medium" @click="suremap">确定</el-button>
+								</div>	
+								<div id="allmap"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="pagetab">
+				<el-pagination background layout=" total,prev, pager, next" :total="total" :current-page.sync="currentPage4"  @current-change="pagetabclick">
+				</el-pagination>
+			</div>
+		</div>
+		<script type="text/javascript">
+			var urls = '<%=request.getContextPath()%>';
+			//var urls = 'http://192.168.1.124:8080';
+		
+			var vm = new Vue({
+				el: '#app',
+				data: function() {
+					return {
+						currentPage4:1,
+						pagenavnum:1,
+						provinces:[],
+						addAll:{
+							contractTime:'',
+							contractExpireTime:'',
+						},
+						fileListfile:[],
+						templat:"",
+						templng:'',
+						formData: [],
+						fileListarr:[],
+						fileArr:[],
+						total:1,
+						addData:[
+							
+						],
+						status:[{
+							 value:null,
+							 label:'全部'
+						},
+						{
+							value: 1,
+							label: '有效'
+						},
+						{
+							 value:0,
+							 label:'无效'
+						}],
+						status_ht:null,
+						forms:{
+							contractTime:''
+						},
+						formList:[],
+						mapshow:false,
+						dialogVisible: false,
+
+						tctit: '编辑商户信息',
+						value: '',
+						select_date: '',
+						fileList: [],
+						mapStatus:true,
+						mapindex:0,
+						chinaCity:{},
+						province:[],
+						city:[],
+						area:[],
+
+					}
+
+				},
+				mounted: function() {
+					
+					this.getListData(1);
+					//this.getprovince();
+					var that = this;
+					$.ajax({
+						url:'./china_city_data.json',
+						success:function(res){
+							that.chinaCity = res;
+							
+							var province = [];
+							for(var i=0; i<res.length; i++){
+								console.log(res[i].name);
+								var provinceArr = {};
+								provinceArr.label = res[i].name;
+								provinceArr.value = res[i].id;
+								province.push(provinceArr);
+							}
+							for(var x=0; x<that.addData.length; x++){
+									that.addData.provinces = province;
+								}
+							console.log(that.addData);	
+
+						}
+					})
+				
+				},
+				methods: {
+	
+					//获取省
+					provinceSelect: function(val){
+						var that = this;
+						console.log(val);
+					},
+					
+					showsetting: function() {
+
+					},
+					handleClose: function(done) {
+						done();
+					},
+					mapClose: function(done) {
+						done();
+					},					
+					handleRemove: function(file, fileList) {
+						console.log(file, fileList);
+					},
+					handlePreview: function(file) {
+						console.log(file);
+					},
+					handleExceed: function(files, fileList) {
+						this.$message.warning(`当前限制选择 3 个文件，本次选择了 ${files.length} 个文件，共选择了 ${files.length + fileList.length} 个文件`);
+					},
+					beforeRemove: function(file, fileList) {
+						return this.$confirm(`确定移除 ${ file.name }？`);
+					},
+					setMap:function(index){
+							this.mapshow = true;
+							
+							var lat = this.addData[index].lat;
+							var lng = this.addData[index].lng;
+							this.mapindex = index;
+							var that = this;
+							
+							setTimeout(function(){
+							var map = new BMap.Map("allmap");
+							map.centerAndZoom(new BMap.Point(lng, lat), 12);
+							map.enableScrollWheelZoom(true);
+			
+							map.clearOverlays();
+							var new_point = new BMap.Point(lng, lat);
+							var marker = new BMap.Marker(new_point); // 创建标注
+							map.addOverlay(marker); // 将标注添加到地图中
+							map.panTo(new_point);
+//							$('.lng').val(lng);
+//							$('.lat').val(lat);
+							map.setCenter(lng, lat);
+							map.addEventListener("click", function(e) {
+//								$('.lng').val(e.point.lng);
+//								$('.lat').val(e.point.lat);
+								that.templat = e.point.lat;
+								that.templng = e.point.lng;
+								map.clearOverlays();
+								var new_point = new BMap.Point(e.point.lng, e.point.lat);
+								var marker = new BMap.Marker(new_point); // 创建标注
+								map.addOverlay(marker); // 将标注添加到地图中
+								map.panTo(new_point);
+			
+							});
+						},500)
+					},
+					suremap:function(){
+						this.addData[this.mapindex].lat =this.templat;
+						this.addData[this.mapindex].lng =this.templng;
+						this.mapshow = false;
+					},
+					addshop:function(){
+
+						var arr = {};
+						arr.subbranchName = "";
+						arr.province ='';
+						arr.city ="";
+						arr.area = "";
+						arr.subbranchAdd ="";
+						arr.receiver ="";
+						arr.receiverPhone="";
+						arr.areas=[];
+						arr.citys=[];
+						arr.lat = 39.914891;
+						arr.lng = 116.404041;
+						this.addData.push(arr)
+						console.log(this.addData);
+					},
+					removeshop:function(index){
+						if(this.addData.length>1){
+							this.addData.splice(index,1);
+						}
+					},					
+					handlePreview:function(file) {
+    						
+					},
+									        //删除文件列表
+				    fileRemove:function(file,fileList){
+//					for(var i=0; i<this.fileListarr.length; i++){
+//						 var fileNAme = this.fileListarr[i].substring(this.fileListarr[i].lastIndexOf('\/')+1);
+//						if(fileNAme == file.name){
+//				           this.fileListarr.splice(i,1); 
+//				        }
+//						
+//					}
+                    this.fileListarr = [];
+	
+				    },
+    					//上传文件
+				    upLoadProfile:function(file,fileList){
+				      var isLt20M = file.size / 1024 / 1024 < 20;
+				      this.files = file.raw;
+				      this.fileName = file.name.substring(file.name.lastIndexOf('.')+1);
+				      if(this.fileName =='jpg' || this.fileName == 'png' || this.fileName == 'pdf'|| this.fileName == 'doc' || this.fileName == 'docx' || this.fileName == 'xlsx' || this.fileName =='pptx' || this.fileName == 'rar'|| this.fileName == 'word'){
+				        if(isLt20M){
+				        this.flag = true;
+				        this.fileListfile = fileList;
+				        this.upLoadKey(file.uid, file.name,'file');
+				        }else{
+				        this.flag = false;
+				        this.fileListfile =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`文件大小超限`); 
+				        }
+				      }else{
+				        this.flag = false;
+				        this.fileListfile =  fileList.slice(0, fileList.length-1);
+				        this.$message.warning(`当前文件格式不正确`);	
+				      }
+				      console.log(this.fileListfile);
+				    },				    
+					    handleExceed:function(files, fileList) {
+				      this.$message.warning(`文件数量超出限制`);
+				    },
+				    					    //获取阿里云key				
+					upLoadKey:function(fileId, fileName,type){
+					   var that = this; 	
+				      var bucket = 'ylbb-business';
+				      var region = 'oss-cn-beijing';   //申请oss服务时的区域
+						$.ajax({
+							type:'post',
+							url:'http://oss.beibeiyue.com/oss/getOSSToken',
+							data:{
+								type:1
+							},success:function(res){
+								var res = JSON.parse(res);
+								if(res.result==0){
+						          var creds = res.data; 
+						            that.client = new OSS.Wrapper({
+						              region: region,
+						              accessKeyId: creds.accessKeyId,
+						              accessKeySecret: creds.accessKeySecret,
+						              stsToken: creds.securityToken,
+						              bucket: bucket
+						            });
+						        }else{
+						         
+						        }
+						        that.upLoadFile(fileId, fileName,type);
+							},error:function(xhr){
+								 that.prompt('网络连接失败,请稍后再试','warning');
+							}
+						})
+				    },	
+				   upLoadFile:function(fileId, fileListName,type){ 
+				      var that = this;
+				       var key = this.files.name;
+				        that.client.multipartUpload(key, that.files, {}).then(res => {
+				          that.fileUrl = res.url ? res.url : 'http://'+ res.bucket + '.oss-cn-beijing.aliyuncs.com/' + res.name;
+				          that.fileArr.push(that.fileUrl)
+				           that.fileListarr.push(this.fileUrl);
+				           console.log(that.fileListarr);
+				        }, error => {
+				          that.prompt('上传文件失败','warning');
+				        })
+				    },
+				    getListData:function(pageNo){
+				    	var that = this;
+				    	if(this.forms.contractTime==null||this.forms.contractTime==""&&this.status_ht==null||this.status_ht==""&&this.status_ht!=0){
+				    		
+			
+							var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							dbLinkman:this.forms.dbLinkman,
+							pageSize:10,
+							pageNo:pageNo,
+							})		
+				    	}else if(this.status_ht==null||this.status_ht==""&&this.status_ht!=0){
+				   
+							var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							dbLinkman:this.forms.dbLinkman,
+							contractTime:this.forms.contractTime,
+							pageSize:10,
+							pageNo:pageNo,
+							})			
+				    	}else if(this.forms.contractTime==null||this.forms.contractTime=="" ){
+	
+							var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							dbLinkman:this.forms.dbLinkman,
+							pageSize:10,
+							pageNo:pageNo,
+							contractStatus:this.status_ht
+							})
+				
+				    	}else{
+
+				    		var paramJson = JSON.stringify({
+							commercialName:this.forms.commercialName,
+							dbLinkman:this.forms.dbLinkman,
+							contractTime:this.forms.contractTime,
+							pageSize:10,
+							pageNo:pageNo,
+							contractStatus:this.status_ht
+							})	
+				    	}
+				
+						$.ajax({
+							type:'post',
+							url:urls+'/welfare/list.html',
+							data:{
+								paramJson:paramJson
+							},
+							success:function(res){
+								that.formList = res.list;
+								that.total = res.total;
+								console.log(that.formList);
+							},
+							error:function(){
+							that.$message({
+					          message: '网络错误！',
+					          type: 'error'
+					        });
+							}
+							
+						});
+					},
+					seach:function(){
+						this.getListData(1);
+						this.currentPage4 = 1;
+					},
+					pagetabclick:function(val){
+						this.getListData(val);
+					},
+					addAllform:function(){
+						var that = this;
+						if(that.form_verify(that.addAll.commercialName)==0){
+							that.$message({ message: '商户名称不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.linkman)==0){
+							that.$message({ message: '联系人不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.linkmanPhone)==0){
+							that.$message({ message: '联系方式不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.dbLinkman)==0){
+							that.$message({ message: 'BD负责人不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.contractNum)==0){
+							that.$message({ message: '合同编号不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.contractTime)==0){
+							that.$message({ message: '签约日期不能为空',type: 'error'});
+							return false;
+						}
+						if(that.form_verify(that.addAll.contractExpireTime)==0){
+							that.$message({ message: '截止日期不能为空',type: 'error'});
+							return false;
+						}
+						if(that.fileListarr.length==0){
+							that.$message({ message: '请上传合同',type: 'error'});
+							return false;
+						}
+						for(var i= 0; i<that.addData.length; i++){
+							if(that.form_verify(that.addData[i].subbranchName)==0){
+								that.$message({ message: '门店名称不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].province)==0){
+								that.$message({ message: '省市区不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].city)==0){
+								that.$message({ message: '省市区不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].area)==0){
+								that.$message({ message: '省市区不能为空',type: 'error'});
+								return false;
+							}														
+							if(that.form_verify(that.addData[i].subbranchAdd)==0){
+								that.$message({ message: '门店地址不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].receiver)==0){
+								that.$message({ message: '接收人不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].receiverPhone)==0){
+								that.$message({ message: '接收手机号不能为空',type: 'error'});
+								return false;
+							}
+							if(that.form_verify(that.addData[i].receiverEmail)==0){
+								that.$message({ message: '接收人邮箱不能为空',type: 'error'});
+								return false;
+							}							
+							
+							if(that.addData[i].lat=="39.914891"&&that.addData[i].lng=="116.404041"){
+								that.$message({ message: '请设置地图标注',type: 'error'});
+								return false;
+							}																											
+						}
+
+
+						this.addData.citys = [];
+						this.addData.areas = [];
+						for(var i=0; i<this.addData.length; i++){
+							this.addData[i].citys = [];
+							this.addData[i].areas = [];	
+						}
+						this.addAll.contractUrl = this.fileListarr[0];
+						this.addAll.subbranchList = this.addData;
+						if(this.vstatus==0){
+						var vurl = urls+'/welfare/add.html';
+						}else{
+						var vurl = urls+'/welfare/update.html';
+						}
+						$.ajax({
+							type:'post',
+							url:vurl,
+							data:{
+								paramJson:JSON.stringify(that.addAll)
+							},success:function(res){
+								if(res.code==1){
+								   that.currentPage4 = 1;	
+									 that.$message({
+							          message: '新增成功！',
+							          type: 'success'
+							        });
+							      that.dialogVisible = false;  
+							      that.getListData(1);
+							
+							   
+								}
+							},
+							error:function(){
+							that.$message({
+					          message: '网络错误！',
+					          type: 'error'
+					        });
+							}
+						})
+
+					},
+					form_verify:function(text){
+						if(text==""||!text){
+							return  0;
+						}else{
+							return 1;
+						}
+
+					},
+
+					//编辑回显
+					showMain:function(id){
+						var that = this;
+						that.tctit = '编辑商户信息',
+						that.vstatus= 1;
+						$.ajax({
+							type:"get",
+							url:urls+'/welfare/show.html',
+							data:{
+								paramJson:JSON.stringify({
+									id:id
+								})
+							},
+							success:function(res){
+								that.dialogVisible = true;
+								that.addAll = [];
+								that.addAll = res.resultMap.commercialContent[0];
+								that.fileListfile = [];
+								if(res.resultMap.commercialContent[0].contractUrl){
+								var contractUrl = res.resultMap.commercialContent[0].contractUrl;
+								that.fileListfile.push({'name':contractUrl,'url':contractUrl});
+								that.fileListarr = [];
+								that.fileListarr.push(contractUrl);
+								}
+								that.addData = res.resultMap.subbranchList;
+								that.pageNo = 1;
+							}
+						});
+					},
+					addshangh:function(){
+						var that = this;
+						that.tctit = '新增商户信息',
+						that.dialogVisible = true;
+						that.vstatus= 0;
+						that.addAll= {
+							contractTime:'',
+							contractExpireTime:'',
+						},
+						that.fileListfile = [];
+						that.fileListfile = [];	
+						that.addData=[];
+						that.addshop();
+					},
+
+				}
+			})
+		</script>
+	</body>
+	<style type="text/css">
+		* {
+			padding: 0;
+			margin: 0;
+			list-style: none;
+			word-break:break-all;word-wrap:break-word
+		}
+		.el-upload-list__item-name.el-upload-list__item-name{
+			height: 22px;
+		}
+		#app {
+			width: 97%;
+			margin: 0 auto;
+		}
+		
+		.el-select,
+		.el-input {
+			width: auto;
+		}
+		
+		.search div {
+			padding: 0;
+			margin: 0;
+		}
+		
+		.search>div {
+			float: left;
+			width: auto;
+			margin-left: 20px;
+			padding: 10px 0;
+		}
+		
+		.search>div:first-child {
+			margin: 0;
+		}
+		
+		.search b {
+			float: left;
+			margin-right: 5px;
+			font-weight: normal;
+			display: block;
+			height: 40px;
+			line-height: 40px;
+		}
+		
+		.search {
+			border-bottom: solid 1px #f0f0f0;
+			overflow: hidden;
+			padding-bottom: 10px;
+		}
+		
+		.content {
+			width: 100%;
+			margin-top: 20px;
+		}
+		
+		.content_tit {
+			width: 100%;
+			height: 40px;
+			line-height: 40px;
+		}
+		
+		.list_left {
+			float: left;
+		}
+		
+		.list_right {
+			float: right;
+		}
+		
+		.list_tit {
+			width: 100%;
+			overflow: hidden;
+		}
+		
+		.list_main {
+			display: block;
+			margin: 0 auto;
+			width: 100%;
+			margin-top: 20px;
+			border-top: solid 1px #f0f0f0;
+			border-bottom: solid 1px #f0f0f0;
+		}
+		
+		.list_main ul {
+			display: block;
+			margin: 0 auto;
+			width: 100%;
+			overflow: hidden;
+			border-bottom: solid 1px #f0f0f0;
+		}
+		
+		.list_main ul:last-child {
+			border: none;
+		}
+		
+		.list_main ul li {
+			width: 8.5%;
+			float: left;
+			padding: 10px 0.5%;
+			text-align: center;
+			text-align: center;
+			/*border-right: solid 1px #f0f0f0;*/
+		}
+		
+		.list_main ul li:last-child {
+			border: none;
+			width: 12%;
+		}
+		
+		.list_main ul:first-child {
+			background: #e4e7ed;
+		}
+		
+		.list_main ul li span {
+			padding: 0 5px;
+			font-size: 14px;
+			color: #007AFF;
+			cursor: pointer;
+		}
+		
+		.pagetab {
+			width: auto;
+			float: right;
+			margin-top: 20px;
+		}
+		
+		.input_tit {
+			width: 100px;
+			text-align: right;
+			display: inline-block;
+			padding-right: 10px;
+		}
+		
+		.el-row {
+			padding: 5px 0;
+		}
+		
+		.input_tit b {
+			color: red;
+		}
+		
+		.el-dialog {
+			margin-top: 0;
+		}
+		
+		.el-dialog__body {
+			padding: 0 20px;
+		}
+		
+		.uploadfiles {
+			width: 300px;
+			float: left;
+		}
+		.mapContent{ width: 100%; height: 100%; position: fixed; top: 0; left: 0; z-index: 5000;}
+		.mapmain{ width: 100%; height: 100%; position: relative;}
+		#allmap{ width: 100%; height: 500px;  }
+		.mapbg{ width: 100%; height: 100%; background: #000; opacity: 0.6;}
+		.map_active{ width:70%; height: 600px; position: absolute; top: 50%; left: 15%; margin-top: -300px;  background: #CACACA; border-radius: 10px;}
+		.maptop{ height: 100px;}
+		.maptop .el-input{ padding: 30px 10px;}
+		.shopList{border-top: dashed 1px #ccc; padding: 10px 0;}
+		.maphide{ z-index: -10000; opacity: 0;}
+	</style>
+
+</html>
